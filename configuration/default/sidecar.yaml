@@ -1,0 +1,146 @@
+---
+# Source: istio/charts/sidecarInjectorWebhook/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-sidecar-injector
+  namespace: istio-system
+  labels:
+    app: sidecarInjectorWebhook
+    chart: sidecarInjectorWebhook
+    heritage: Tiller
+    release: istio
+    istio: sidecar-injector
+spec:
+  ports:
+  - port: 443
+    name: https-inject
+  - port: 15014
+    name: http-monitoring
+  selector:
+    istio: sidecar-injector
+
+---
+
+# Source: istio/charts/sidecarInjectorWebhook/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: istio-sidecar-injector
+  namespace: istio-system
+  labels:
+    app: sidecarInjectorWebhook
+    chart: sidecarInjectorWebhook
+    heritage: Tiller
+    release: istio
+    istio: sidecar-injector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      istio: sidecar-injector
+#  strategy:
+#    rollingUpdate:
+#      maxSurge: 100%
+#      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: sidecarInjectorWebhook
+        chart: sidecarInjectorWebhook
+        heritage: Tiller
+        release: istio
+        istio: sidecar-injector
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+#      serviceAccountName: istio-sidecar-injector-service-account
+      containers:
+      - name: sidecar-injector-webhook
+        image: "gcr.io/istio-release/sidecar_injector:release-1.3-latest-daily"
+        imagePullPolicy: IfNotPresent
+        args:
+        - --caCertFile=/etc/istio/certs/root-cert.pem
+        - --tlsCertFile=/etc/istio/certs/cert-chain.pem
+        - --tlsKeyFile=/etc/istio/certs/key.pem
+        - --injectConfig=/etc/istio/inject/config
+        - --meshConfig=/etc/istio/config/mesh
+        - --healthCheckInterval=2s
+        - --healthCheckFile=/health
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/istio/config
+          readOnly: true
+        - name: certs
+          mountPath: /etc/istio/certs
+          readOnly: true
+        - name: inject-config
+          mountPath: /etc/istio/inject
+          readOnly: true
+        livenessProbe:
+          exec:
+            command:
+            - /usr/local/bin/sidecar-injector
+            - probe
+            - --probe-path=/health
+            - --interval=4s
+          initialDelaySeconds: 4
+          periodSeconds: 4
+        readinessProbe:
+          exec:
+            command:
+            - /usr/local/bin/sidecar-injector
+            - probe
+            - --probe-path=/health
+            - --interval=4s
+          initialDelaySeconds: 4
+          periodSeconds: 4
+        resources:
+          requests:
+            cpu: 10m
+
+      volumes:
+      - name: config-volume
+        configMap:
+          name: istio
+      - name: certs
+        secret:
+          secretName: istio.istio-sidecar-injector-service-account
+      - name: inject-config
+        configMap:
+          name: istio-sidecar-injector
+          items:
+          - key: config
+            path: config
+          - key: values
+            path: values
+
+---
+
+# Source: istio/charts/sidecarInjectorWebhook/templates/mutatingwebhook.yaml
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: istio-sidecar-injector
+  labels:
+    app: sidecarInjectorWebhook
+    chart: sidecarInjectorWebhook
+    heritage: Tiller
+    release: istio
+webhooks:
+- name: sidecar-injector.istio.io
+  clientConfig:
+    service:
+      name: istio-sidecar-injector
+      namespace: istio-system
+      path: "/inject"
+    caBundle: ""
+  rules:
+  - operations: [ "CREATE" ]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  failurePolicy: Fail
+  namespaceSelector:
+    matchLabels:
+      istio-injection: enabled
