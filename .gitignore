@@ -1,4 +1,6 @@
 # git history files
+#
+pilot/cmd/pilot-discovery/pilot-discovery
 .history_rewritten_*
 # Eclipse artifacts
 .project
