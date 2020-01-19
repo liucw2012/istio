@@ -1,3 +1,12 @@
 #!/usr/bin/env bash
 
-./pilot-discovery discovery --monitoringAddr=:15014 --log_output_level=default:info --domain cluster.local --meshConfig=mesh.yaml --secureGrpcAddr=""
+config=""
+config="$config --httpAddr=9090"
+config="$config --monitoringAddr=:15014"
+config="$config --log_output_level=default:info"
+config="$config --domain cluster.local"
+config="$config --meshConfig=mesh.yaml"
+config="$config --secureGrpcAddr=''"
+
+./pilot-discovery discovery $config
+
