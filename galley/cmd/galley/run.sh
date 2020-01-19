@@ -8,7 +8,7 @@ config="$config --readinessProbePath=/healthready"
 config="$config --deployment-namespace=istio-system"
 config="$config --insecure=true"
 config="$config --validation-webhook-config-file=validating.yaml"
-config="$config --monitoringPort=15014"
+config="$config --monitoringPort=15015"
 config="$config --log_output_level=default:info"
 config="$config --enable-validation=false"
 

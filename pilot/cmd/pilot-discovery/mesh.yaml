@@ -69,7 +69,8 @@ localityLbSetting:
 # configuration.
 rootNamespace: istio-system
 configSources:
-- address: istio-galley.istio-system.svc:9901
+#- address: istio-galley.istio-system.svc:9901
+- address: localhost:9901
 
 defaultConfig:
   #
