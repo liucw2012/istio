@@ -119,6 +119,7 @@ echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.pem
 
 # create the secret with CA cert and server cert/key
 kubectl create secret generic ${secret} \
+        --from-file=root-chain.pem=${tmpdir}/ca.crt \
         --from-file=key.pem=${tmpdir}/server-key.pem \
         --from-file=cert-chain.pem=${tmpdir}/server-cert.pem \
         --dry-run -o yaml |
