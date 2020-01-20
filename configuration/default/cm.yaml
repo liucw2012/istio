@@ -122,7 +122,7 @@ data:
         - --parentShutdownDuration
         - "{{ formatDuration .ProxyConfig.ParentShutdownDuration }}"
         - --discoveryAddress
-        - "{{ annotation .ObjectMeta `sidecar.istio.io/discoveryAddress` .ProxyConfig.DiscoveryAddress }}"
+        - "http://172.31.71.181:9901"
       {{- if eq .Values.global.proxy.tracer "lightstep" }}
         - --lightstepAddress
         - "{{ .ProxyConfig.GetTracing.GetLightstep.GetAddress }}"
