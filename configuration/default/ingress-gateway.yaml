@@ -198,51 +198,56 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: istio-policy
+  name: istio-ingressgateway
   namespace: istio-system
   annotations:
-    networking.istio.io/exportTo: "*"
   labels:
-    app: mixer
-    chart: mixer
+    chart: gateways
     heritage: Tiller
     release: istio
-    istio: mixer
+    app: istio-ingressgateway
+    istio: ingressgateway
 spec:
-  ports:
-  - name: grpc-mixer
-    port: 9091
-  - name: grpc-mixer-mtls
-    port: 15004
-  - name: http-monitoring
-    port: 15014
+  type: LoadBalancer
   selector:
-    istio: mixer
-    istio-mixer-type: policy
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: istio-telemetry
-  namespace: istio-system
-  annotations:
-    networking.istio.io/exportTo: "*"
-  labels:
-    app: mixer
-    chart: mixer
-    heritage: Tiller
     release: istio
-    istio: mixer
-spec:
+    app: istio-ingressgateway
+    istio: ingressgateway
   ports:
-  - name: grpc-mixer
-    port: 9091
-  - name: grpc-mixer-mtls
-    port: 15004
-  - name: http-monitoring
-    port: 15014
-  - name: prometheus
-    port: 42422
-  selector:
-    istio: mixer
-    istio-mixer-type: telemetry
+  -
+    name: status-port
+    port: 15020
+    targetPort: 15020
+  -
+    name: http2
+    nodePort: 31380
+    port: 80
+    targetPort: 80
+  -
+    name: https
+    nodePort: 31390
+    port: 443
+  -
+    name: tcp
+    nodePort: 31400
+    port: 31400
+  -
+    name: https-kiali
+    port: 15029
+    targetPort: 15029
+  -
+    name: https-prometheus
+    port: 15030
+    targetPort: 15030
+  -
+    name: https-grafana
+    port: 15031
+    targetPort: 15031
+  -
+    name: https-tracing
+    port: 15032
+    targetPort: 15032
+  -
+    name: tls
+    port: 15443
+    targetPort: 15443
