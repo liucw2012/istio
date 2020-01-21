@@ -1,0 +1,33 @@
+A group of commands used to retrieve information about proxy configuration from the Envoy config dump
+
+Usage:
+  istioctl proxy-config [command]
+
+Aliases:
+  proxy-config, pc
+
+Examples:
+  # Retrieve information about proxy configuration from an Envoy instance.
+  istioctl proxy-config <clusters|listeners|routes|endpoints|bootstrap> <pod-name[.namespace]>
+
+Available Commands:
+  bootstrap   Retrieves bootstrap configuration for the Envoy in the specified pod
+  cluster     Retrieves cluster configuration for the Envoy in the specified pod
+  endpoint    Retrieves endpoint configuration for the Envoy in the specified pod
+  listener    Retrieves listener configuration for the Envoy in the specified pod
+  log         (experimental) Retrieves logging levels of the Envoy in the specified pod
+  route       Retrieves route configuration for the Envoy in the specified pod
+  secret      (experimental) Retrieves secret configuration for the Envoy in the specified pod
+
+Flags:
+  -h, --help            help for proxy-config
+  -o, --output string   Output format: one of json|short (default "short")
+
+Global Flags:
+      --context string            The name of the kubeconfig context to use
+  -i, --istioNamespace string     Istio system namespace (default "istio-system")
+  -c, --kubeconfig string         Kubernetes configuration file
+      --log_output_level string   Comma-separated minimum per-scope logging level of messages to output, in the form of <scope>:<level>,<scope>:<level>,... where scope can be one of [ads, all, analysis, attributes, authn, cacheLog, citadelClientLog, configMapController, conversions, default, googleCAClientLog, grpcAdapter, kube, kube-converter, mcp, meshconfig, model, name, patch, processing, rbac, resource, runtime, sdsServiceLog, secretFetcherLog, source, stsClientLog, tpath, translator, util, validation, vaultClientLog] and level can be one of [debug, info, warn, error, fatal, none] (default "default:info,validation:error,processing:error,source:error,analysis:warn")
+  -n, --namespace string          Config namespace
+
+Use "istioctl proxy-config [command] --help" for more information about a command.

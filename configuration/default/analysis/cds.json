@@ -1,0 +1,508 @@
+[
+    {
+        "name": "BlackHoleCluster",
+        "type": "STATIC",
+        "connectTimeout": "10s"
+    },
+    {
+        "name": "InboundPassthroughClusterIpv4",
+        "type": "ORIGINAL_DST",
+        "connectTimeout": "10s",
+        "lbPolicy": "CLUSTER_PROVIDED",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxConnections": 102400,
+                    "maxRetries": 1024
+                }
+            ]
+        },
+        "upstreamBindConfig": {
+            "sourceAddress": {
+                "address": "127.0.0.6",
+                "portValue": 0
+            }
+        }
+    },
+    {
+        "name": "PassthroughCluster",
+        "type": "ORIGINAL_DST",
+        "connectTimeout": "10s",
+        "lbPolicy": "CLUSTER_PROVIDED",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxConnections": 102400,
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|9080||details.default.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|9080||details.default.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|80||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|80||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        },
+        "http2ProtocolOptions": {
+            "maxConcurrentStreams": 1073741824
+        }
+    },
+    {
+        "name": "outbound|443||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|443||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|15020||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|15020||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|15029||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|15029||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|15030||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|15030||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|15031||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|15031||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|15032||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|15032||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|15443||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|15443||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|31400||istio-ingressgateway.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|31400||istio-ingressgateway.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|443||istio-sidecar-injector.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|443||istio-sidecar-injector.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|15014||istio-sidecar-injector.istio-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|15014||istio-sidecar-injector.istio-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|53||kube-dns.kube-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|53||kube-dns.kube-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|9153||kube-dns.kube-system.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|9153||kube-dns.kube-system.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|443||kubernetes.default.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|443||kubernetes.default.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "inbound|15020|mgmt-15020|mgmtCluster",
+        "type": "STATIC",
+        "connectTimeout": "10s",
+        "loadAssignment": {
+            "clusterName": "inbound|15020|mgmt-15020|mgmtCluster",
+            "endpoints": [
+                {
+                    "lbEndpoints": [
+                        {
+                            "endpoint": {
+                                "address": {
+                                    "socketAddress": {
+                                        "address": "127.0.0.1",
+                                        "portValue": 15020
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "circuitBreakers": {
+            "thresholds": [
+                {}
+            ]
+        }
+    },
+    {
+        "name": "outbound|9080||productpage.default.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|9080||productpage.default.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "inbound|9080|http|productpage.default.svc.cluster.local",
+        "type": "STATIC",
+        "connectTimeout": "10s",
+        "loadAssignment": {
+            "clusterName": "inbound|9080|http|productpage.default.svc.cluster.local",
+            "endpoints": [
+                {
+                    "lbEndpoints": [
+                        {
+                            "endpoint": {
+                                "address": {
+                                    "socketAddress": {
+                                        "address": "127.0.0.1",
+                                        "portValue": 9080
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "circuitBreakers": {
+            "thresholds": [
+                {}
+            ]
+        }
+    },
+    {
+        "name": "prometheus_stats",
+        "type": "STATIC",
+        "connectTimeout": "0.250s",
+        "hosts": [
+            {
+                "socketAddress": {
+                    "address": "127.0.0.1",
+                    "portValue": 15000
+                }
+            }
+        ]
+    },
+    {
+        "name": "outbound|9080||ratings.default.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|9080||ratings.default.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "outbound|9080||reviews.default.svc.cluster.local",
+        "type": "EDS",
+        "edsClusterConfig": {
+            "edsConfig": {
+                "ads": {},
+                "initialFetchTimeout": "0s"
+            },
+            "serviceName": "outbound|9080||reviews.default.svc.cluster.local"
+        },
+        "connectTimeout": "10s",
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxRetries": 1024
+                }
+            ]
+        }
+    },
+    {
+        "name": "xds-grpc",
+        "type": "STRICT_DNS",
+        "connectTimeout": "10s",
+        "hosts": [
+            {
+                "socketAddress": {
+                    "address": "172.31.71.181",
+                    "portValue": 15010
+                }
+            }
+        ],
+        "circuitBreakers": {
+            "thresholds": [
+                {
+                    "maxConnections": 100000,
+                    "maxPendingRequests": 100000,
+                    "maxRequests": 100000
+                },
+                {
+                    "priority": "HIGH",
+                    "maxConnections": 100000,
+                    "maxPendingRequests": 100000,
+                    "maxRequests": 100000
+                }
+            ]
+        },
+        "http2ProtocolOptions": {},
+        "dnsRefreshRate": "300s",
+        "dnsLookupFamily": "V4_ONLY",
+        "upstreamConnectionOptions": {
+            "tcpKeepalive": {
+                "keepaliveTime": 300
+            }
+        }
+    },
+    {
+        "name": "zipkin",
+        "type": "STRICT_DNS",
+        "connectTimeout": "1s",
+        "hosts": [
+            {
+                "socketAddress": {
+                    "address": "zipkin.istio-system",
+                    "portValue": 9411
+                }
+            }
+        ],
+        "dnsRefreshRate": "300s",
+        "dnsLookupFamily": "V4_ONLY"
+    }
+]
