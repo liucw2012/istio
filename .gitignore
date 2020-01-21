@@ -1,6 +1,8 @@
 # git history files
 #
+#
 
+configuration/default/analysis/.run.sh.swp
 pilot/cmd/pilot-discovery/pilot-discovery
 galley/cmd/galley/galley
 
