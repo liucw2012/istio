@@ -278,21 +278,21 @@
                         "name": "cx_connect_fail"
                     },
                     {
-                        "value": "13",
+                        "value": "21",
                         "name": "cx_total"
                     },
                     {
                         "name": "rq_error"
                     },
                     {
-                        "value": "13",
+                        "value": "21",
                         "name": "rq_success"
                     },
                     {
                         "name": "rq_timeout"
                     },
                     {
-                        "value": "13",
+                        "value": "21",
                         "name": "rq_total"
                     },
                     {
@@ -507,15 +507,15 @@
                 },
                 "stats": [
                     {
-                        "value": "6557",
+                        "value": "10239",
                         "name": "cx_connect_fail"
                     },
                     {
-                        "value": "6558",
+                        "value": "10241",
                         "name": "cx_total"
                     },
                     {
-                        "value": "6558",
+                        "value": "10241",
                         "name": "rq_error"
                     },
                     {
@@ -525,7 +525,7 @@
                         "name": "rq_timeout"
                     },
                     {
-                        "value": "1",
+                        "value": "2",
                         "name": "rq_total"
                     },
                     {
