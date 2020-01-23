@@ -82,6 +82,7 @@ func newState(cfg *Config, listener processing.Listener) *State {
 	// pre-populate state for all known types so that built snapshots
 	// includes valid default version for empty resource collections.
 	for _, info := range cfg.Schema.All() {
+		fmt.Printf("state add collection: %v\n", info.Collection)
 		s.entries[info.Collection] = &resourceTypeState{
 			entries:  make(map[resource.FullName]*mcp.Resource),
 			versions: make(map[resource.FullName]resource.Version),
