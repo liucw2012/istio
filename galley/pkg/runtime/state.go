@@ -37,6 +37,7 @@ import (
 var _ processing.Handler = &State{}
 
 // State is the in-memory state of Galley.
+// 记录着内存状态的galley
 type State struct {
 	listener processing.Listener
 
@@ -55,9 +56,11 @@ type State struct {
 	lastIngressVersion int64
 
 	// pendingEvents counts the number of events awaiting publishing.
+	// 等待被发布的事件个数
 	pendingEvents int64
 
 	// lastSnapshotTime records the last time a snapshot was published.
+	// 上一次发布的时间
 	lastSnapshotTime time.Time
 }
 
@@ -114,13 +117,14 @@ func (s *State) Handle(event resource.Event) {
 		if !ok {
 			return
 		}
-
+		// 保存当前对象内存中的值以及版本
 		pks.entries[event.Entry.ID.FullName] = entry
 		pks.versions[event.Entry.ID.FullName] = event.Entry.ID.Version
 		monitoring.RecordStateTypeCount(event.Entry.ID.Collection.String(), len(pks.entries))
 		monitorEntry(event.Entry.ID, true)
 
 	case resource.Deleted:
+		// 删除当前对象内存中的值以及版本
 		delete(pks.entries, event.Entry.ID.FullName)
 		delete(pks.versions, event.Entry.ID.FullName)
 		monitoring.RecordStateTypeCount(event.Entry.ID.Collection.String(), len(pks.entries))
@@ -130,23 +134,26 @@ func (s *State) Handle(event resource.Event) {
 		log.Scope.Errorf("Unknown event kind: %v", event.Kind)
 		return
 	}
-
+	// 更新version
 	s.versionCounter++
 	pks.version = s.versionCounter
 
 	log.Scope.Debugf("In-memory State has changed:\n%v\n", s)
 	s.pendingEvents++
+	// 通知listener对该collection以已经发生变化
 	s.listener.CollectionChanged(event.Entry.ID.Collection)
 }
 
 func (s *State) getResourceTypeState(name resource.Collection) (*resourceTypeState, bool) {
 	s.entriesLock.Lock()
 	defer s.entriesLock.Unlock()
-
+	// 根据collection找到当前内存中存在的对象
+	// 比如collection是virtualservice 那就是得到内存中所有virtualservice的对象
 	pks, found := s.entries[name]
 	return pks, found
 }
 
+// 返回snapshot.Snapshot
 func (s *State) buildSnapshot() snapshot.Snapshot {
 	s.entriesLock.Lock()
 	defer s.entriesLock.Unlock()
@@ -154,7 +161,7 @@ func (s *State) buildSnapshot() snapshot.Snapshot {
 	now := time.Now()
 	monitoring.RecordProcessorSnapshotPublished(s.pendingEvents, now.Sub(s.lastSnapshotTime))
 	s.lastSnapshotTime = now
-
+	// 创建快照
 	b := snapshot.NewInMemoryBuilder()
 
 	for collection, state := range s.entries {
@@ -168,7 +175,7 @@ func (s *State) buildSnapshot() snapshot.Snapshot {
 
 	// Build entities that are derived from existing ones.
 	s.buildProjections(b)
-
+	// 将pendingEvents清空
 	sn := b.Build()
 	s.pendingEvents = 0
 	return sn

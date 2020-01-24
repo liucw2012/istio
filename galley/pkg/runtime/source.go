@@ -27,10 +27,12 @@ import (
 type Source interface {
 	// Start the source interface, provided the EventHandler. The initial state of the underlying
 	// config store should be reflected as a series of Added events, followed by a FullSync event.
+	// 开始方法 对k8s而言 就是开始监控一些crd资源交由handler处理
 	Start(handler resource.EventHandler) error
 
 	// Stop the source interface. Upon return from this method, the channel should not be accumulating any
 	// more events.
+	// 停止监控
 	Stop()
 }
 

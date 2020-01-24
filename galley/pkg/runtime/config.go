@@ -22,6 +22,7 @@ import (
 // Config used by the runtime
 type Config struct {
 	// Cached mesh config
+	// 缓存的网格配置
 	Mesh meshconfig.Cache
 
 	// Domain suffix to use
@@ -31,5 +32,6 @@ type Config struct {
 	Schema *resource.Schema
 
 	// Enable Service Entry processing
+	// 是否支持service entry
 	SynthesizeServiceEntries bool
 }

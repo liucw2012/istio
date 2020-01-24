@@ -150,8 +150,10 @@ func (p *Processor) seedMesh() {
 // Start the processor. This will cause processor to listen to incoming events from the provider
 // and publish component configuration via the Distributor.
 func (p *Processor) Start() error {
+	// 启动方法
 	setupFn := func() error {
 		err := p.source.Start(func(e resource.Event) {
+			// 将事件e传给管道p.eventCh
 			p.eventCh <- e
 		})
 		if err != nil {
@@ -159,7 +161,7 @@ func (p *Processor) Start() error {
 		}
 		return nil
 	}
-
+	// 运行方法
 	runFn := func(ctx context.Context) {
 		scope.Info("Starting processor...")
 		defer func() {
@@ -178,10 +180,13 @@ func (p *Processor) Start() error {
 				scope.Debug("Processor.process: done")
 				return
 			case e := <-p.eventCh:
+				// 从管道p.eventCh中取出要处理的事件
 				p.processEvent(e)
 			case <-p.stateStrategy.Publish:
 				scope.Debug("Processor.process: publish")
+				// 将当前state对象内存中保存的对象建立一个快照
 				s := p.state.buildSnapshot()
+				// 该快照将交由distributor处理
 				p.distributor.SetSnapshot(groups.Default, s)
 			}
 
@@ -190,7 +195,7 @@ func (p *Processor) Start() error {
 			}
 		}
 	}
-
+	// 通过工具类来运行这两个方法
 	return p.worker.Start(setupFn, runFn)
 }
 
@@ -224,6 +229,7 @@ func (p *Processor) processEvent(e resource.Event) {
 		scope.Infof("Synchronization is complete, starting distribution.")
 
 		p.fullSyncCond.L.Lock()
+		// 把distribute设置为true
 		p.distribute = true
 		p.fullSyncCond.Broadcast()
 		p.fullSyncCond.L.Unlock()
@@ -231,7 +237,9 @@ func (p *Processor) processEvent(e resource.Event) {
 		p.stateStrategy.OnChange()
 		return
 	}
-
+	// 将该event交由dispatcher处理
+	// 现在可以理解为就是p.state来处理, 原因p.handler就是一个dispatcher
+	// dispatcher里面每一个collection都注册了一个p.state这样的handler
 	p.handler.Handle(e)
 }
 
@@ -245,7 +253,7 @@ func buildDispatcher(state *State, serviceEntryHandler processing.Handler) *proc
 	b := processing.NewDispatcherBuilder()
 
 	// Route all types to the state, except for those required by the serviceEntryHandler.
-
+	// 所有注册的crds
 	stateSchema := resource.NewSchemaBuilder().RegisterSchema(state.config.Schema).Build()
 	for _, spec := range stateSchema.All() {
 		b.Add(spec.Collection, state)

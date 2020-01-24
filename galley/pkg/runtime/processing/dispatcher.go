@@ -28,6 +28,8 @@ type Dispatcher struct {
 
 var _ Handler = &Dispatcher{}
 
+// Dispatcher是一个Handler的实现类
+// 并且针对每一种collection 都有其对应的一系列handler
 // Handle implements Handler
 func (d *Dispatcher) Handle(e resource.Event) {
 	handlers, found := d.handlers[e.Entry.ID.Collection]
