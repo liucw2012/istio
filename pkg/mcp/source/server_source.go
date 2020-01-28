@@ -83,7 +83,7 @@ func (s *Server) EstablishResourceStream(stream mcp.ResourceSource_EstablishReso
 	} else {
 		scope.Warnf("No peer info found on the incoming stream.")
 	}
-
+	// 检查
 	if err := s.authCheck.Check(authInfo); err != nil {
 		return status.Errorf(codes.Unauthenticated, "Authentication failure: %v", err)
 	}

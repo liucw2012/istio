@@ -200,6 +200,7 @@ func (s *Source) newConnection(stream Stream) *connection {
 		queue:    internal.NewUniqueScheduledQueue(len(s.collections)),
 	}
 
+	// 为每个collection建立watch
 	collections := make([]string, 0, len(s.collections))
 	for i := range s.collections {
 		collection := s.collections[i]
@@ -219,9 +220,11 @@ func (s *Source) newConnection(stream Stream) *connection {
 }
 
 func (s *Source) ProcessStream(stream Stream) error {
+	// 为该client建立连接
 	con := s.newConnection(stream)
 
 	defer s.closeConnection(con)
+	// 接收request
 	go con.receive()
 
 	for {
@@ -247,6 +250,8 @@ func (s *Source) ProcessStream(stream Stream) error {
 				}
 			}
 		case req, more := <-con.requestC:
+			// 接收request 可想而知
+			// receive方法主要是把request放到con.requestC中
 			if !more {
 				return con.reqError
 			}
@@ -256,10 +261,12 @@ func (s *Source) ProcessStream(stream Stream) error {
 				}
 
 			}
+			// 处理request
 			if err := con.processClientRequest(req); err != nil {
 				return err
 			}
 		case <-con.queue.Done():
+			// queue 关闭
 			scope.Debugf("MCP: connection %v: stream done", con)
 			return status.Error(codes.Unavailable, "server canceled watch")
 		}
@@ -330,6 +337,7 @@ func (con *connection) pushServerResponse(w *watch, resp *WatchResponse) error {
 	if incremental {
 		added, removed = calculateDelta(resp.Resources, w.ackedVersionMap)
 	} else {
+		// resp.Resources就是snapshot快照里面的内容
 		for _, resource := range resp.Resources {
 			added = append(added, *resource)
 		}
@@ -352,6 +360,8 @@ func (con *connection) pushServerResponse(w *watch, resp *WatchResponse) error {
 	}
 	scope.Debugf("MCP: connection %v: SEND collection=%v version=%v nonce=%v inc=%v",
 		con, resp.Collection, resp.Version, msg.Nonce, msg.Incremental)
+	// 在向client端发送成功后设置w.pending
+	// 当client端发送ACK/NACK的时候用于验证
 	w.pending = msg
 	return nil
 }
@@ -359,6 +369,7 @@ func (con *connection) pushServerResponse(w *watch, resp *WatchResponse) error {
 func (con *connection) receive() {
 	defer close(con.requestC)
 	for {
+		// 接收信息
 		req, err := con.stream.Recv()
 		if err != nil {
 			if err == io.EOF {
@@ -373,6 +384,7 @@ func (con *connection) receive() {
 			return
 		}
 		select {
+		// 写入到channel con.requestC
 		case con.requestC <- req:
 		case <-con.queue.Done():
 			scope.Debugf("MCP: connection %v: stream done", con)
@@ -402,7 +414,7 @@ func (con *connection) processClientRequest(req *mcp.RequestResources) error {
 	collection := req.Collection
 
 	con.reporter.RecordRequestSize(collection, con.id, internal.ProtoSize(req))
-
+	// 取出watch
 	w, ok := con.watches[collection]
 	if !ok {
 		return status.Errorf(codes.InvalidArgument, "unsupported collection %q", collection)
@@ -415,6 +427,7 @@ func (con *connection) processClientRequest(req *mcp.RequestResources) error {
 		if w.pending == nil {
 			scope.Infof("MCP: connection %v: inc=%v WATCH for %v", con, req.Incremental, collection)
 		} else {
+			// 表明是ACK或者NACK
 			versionInfo = w.pending.SystemVersionInfo
 			if req.ErrorDetail != nil {
 				scope.Warnf("MCP: connection %v: NACK collection=%v version=%q with nonce=%q error=%#v inc=%v", // nolint: lll
@@ -442,6 +455,8 @@ func (con *connection) processClientRequest(req *mcp.RequestResources) error {
 			VersionInfo: versionInfo,
 			incremental: req.Incremental,
 		}
+		// con.watcher = snapshot
+		// snapshot的Watcher方法中会组装response 并调用queueResponse方法将response入队列
 		w.cancel = con.watcher.Watch(sr, con.queueResponse, con.peerAddr)
 	} else {
 		// This error path should not happen! Skip any requests that don't match the

@@ -119,6 +119,7 @@ func (c *Cache) Watch(request *source.Request, pushResponse source.PushResponseF
 
 	// return an immediate response if a snapshot is available and the
 	// requested version doesn't match.
+	// 这个snapshots会在setSnapshot方法中更新
 	if snapshot, ok := c.snapshots[group]; ok {
 
 		version := snapshot.Version(request.Collection)
@@ -133,6 +134,7 @@ func (c *Cache) Watch(request *source.Request, pushResponse source.PushResponseF
 				Resources:  snapshot.Resources(request.Collection),
 				Request:    request,
 			}
+			// 放入到con.queue中
 			pushResponse(response)
 			return nil
 		}
@@ -147,6 +149,7 @@ func (c *Cache) Watch(request *source.Request, pushResponse source.PushResponseF
 		watchID, collection, group, request.VersionInfo)
 
 	info.mu.Lock()
+	// 更新info.watches
 	info.watches[watchID] = &responseWatch{request: request, pushResponse: pushResponse}
 	info.mu.Unlock()
 
@@ -219,7 +222,7 @@ func (c *Cache) SetSnapshot(group string, snapshot Snapshot) {
 	if info, ok := c.status[group]; ok {
 		info.mu.Lock()
 		defer info.mu.Unlock()
-
+		// 遍历所有的watches
 		for id, watch := range info.watches {
 			version := snapshot.Version(watch.request.Collection)
 			if version != watch.request.VersionInfo {
@@ -232,6 +235,8 @@ func (c *Cache) SetSnapshot(group string, snapshot Snapshot) {
 					Resources:  snapshot.Resources(watch.request.Collection),
 					Request:    watch.request,
 				}
+				// 调用push方法
+				// 将response放入到con.queue中 发送给client端
 				watch.pushResponse(response)
 
 				// discard the responseWatch
