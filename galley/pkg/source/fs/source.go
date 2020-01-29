@@ -81,10 +81,12 @@ type source struct {
 func (s *source) readFiles(root string) map[fileResourceKey]*fileResource {
 	results := map[fileResourceKey]*fileResource{}
 
+	// 遍历该文件夹下面所有文件
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		// 该path文件中存储的所有对象
 		result := s.readFile(path, info)
 		if len(result) != 0 {
 			for _, r := range result {
@@ -104,6 +106,7 @@ func (s *source) readFile(path string, info os.FileInfo) []*fileResource {
 	if mode := info.Mode() & os.ModeType; !supportedExtensions[filepath.Ext(path)] || (mode != 0 && mode != os.ModeSymlink) {
 		return nil
 	}
+	// 获得文件内容
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Scope.Warnf("Failed to read %s: %v", path, err)
@@ -114,6 +117,7 @@ func (s *source) readFile(path string, info os.FileInfo) []*fileResource {
 
 	for _, r := range s.parseFile(path, data) {
 		if !s.kinds[r.spec.Kind] {
+			// 如果该source不支持该Kind 比如Deployment
 			continue
 		}
 		result = append(result, r)
@@ -122,6 +126,7 @@ func (s *source) readFile(path string, info os.FileInfo) []*fileResource {
 }
 
 func (s *source) initialCheck() {
+	// 得到该文件夹下所有文件转化成的对象 以map形式存储
 	newData := s.readFiles(s.root)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -133,12 +138,17 @@ func (s *source) initialCheck() {
 }
 
 func (s *source) reload() {
+	// 再次读取所有文件
 	newData := s.readFiles(s.root)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	newShas := map[fileResourceKey][sha1.Size]byte{}
 	// Compute the deltas using sha comparisons
 	nextVersion := s.version + 1
+	// sha 为上一个版本的数据内容
+	// newData为当前版本的数据内容
+	// 用sha和newData对比就可以得到所有事件内容
+	// 最后更新sha为当前版本的数据内容
 	for k, r := range newData {
 		newShas[k] = r.sha
 		sha, exists := s.shas[k]
@@ -181,6 +191,7 @@ func (s *source) process(eventKind resource.EventKind, key fileResourceKey, r *f
 						Collection: r.spec.Target.Collection,
 						FullName:   key.fullName,
 					},
+					// 当前版本
 					Version: version,
 				},
 				Item:     r.entry.Resource,
@@ -210,9 +221,12 @@ func (s *source) process(eventKind resource.EventKind, key fileResourceKey, r *f
 // Start implements runtime.Source
 func (s *source) Start(handler resource.EventHandler) error {
 	return s.worker.Start(nil, func(ctx context.Context) {
+		// 初始化s.handler处理event
 		s.handler = handler
+		// 初始加载所有文件
 		s.initialCheck()
 		c := make(chan appsignals.Signal, 1)
+		// 注册一个signal 可以通过FileTrigger来监控文件 这样文件变化就发送signal到此channel c
 		appsignals.Watch(c)
 
 		for {
@@ -239,6 +253,7 @@ func New(root string, schema *schema.Instance, config *converter.Config) (runtim
 		worker:  util.NewWorker("fs source", log.Scope),
 		version: 0,
 	}
+	// 支持的schema 比如VirtualService, Service, Pod等
 	for _, spec := range schema.All() {
 		fs.kinds[spec.Kind] = true
 	}
@@ -301,7 +316,7 @@ func (s *source) parseChunk(yamlChunk []byte) (*fileResource, error) {
 	if spec == nil {
 		return nil, fmt.Errorf("failed finding spec for kind: %s", groupVersionKind.Kind)
 	}
-
+	// 如果是builtinType 比如Service, Pod等
 	builtinType := builtin.GetType(groupVersionKind.Kind)
 	if builtinType != nil {
 		obj, err := builtinType.ParseJSON(jsonChunk)

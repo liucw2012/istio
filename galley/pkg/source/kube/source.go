@@ -55,7 +55,7 @@ func New(interfaces client.Interfaces, resyncPeriod time.Duration, schema *schem
 				return nil, err
 			}
 			sharedInformers = getSharedInformers(sharedInformers, cl, resyncPeriod)
-
+			// 创建k8s原生资源的source 比如pod, service
 			source, err := builtin.New(sharedInformers, spec)
 			if err != nil {
 				return nil, err
@@ -67,6 +67,7 @@ func New(interfaces client.Interfaces, resyncPeriod time.Duration, schema *schem
 				return nil, err
 			}
 			// Unknown types use the dynamic source.
+			// 创建crd资源的source 比如virtualService, gateway等等
 			source, err := dynamic.New(dynClient, resyncPeriod, spec, cfg)
 			if err != nil {
 				return nil, err
@@ -116,14 +117,17 @@ func (s *aggregate) Start(handler resource.EventHandler) error {
 	syncGroup.Add(len(s.sources))
 	syncHandler := func(e resource.Event) {
 		if e.Kind == resource.FullSync {
+			// 如果某一个资源同步完了 就减少一个
 			syncGroup.Done()
 		} else {
 			// Not a sync event, just pass on to the real handler.
+			// 不是同步操作 调用传入的handler
 			handler(e)
 		}
 	}
 
 	for _, source := range s.sources {
+		// 为每个资源调用各自的Start方法
 		if err := source.Start(syncHandler); err != nil {
 			return err
 		}
@@ -131,7 +135,9 @@ func (s *aggregate) Start(handler resource.EventHandler) error {
 
 	// After all of the sources have synced, return a fullSync event.
 	go func() {
+		// 等待所有资源同步完
 		syncGroup.Wait()
+		// 发送一个FullSync给runtime 表明所有资源以及同步完成
 		handler(resource.FullSyncEvent)
 	}()
 

@@ -50,8 +50,12 @@ func receive(ch chan resource.Event) {
 func main()  {
 	dir := "./fs"
 	shutdown := make(chan os.Signal, 1)
+	// 监控文件变化
 	appsignals.FileTrigger(dir, syscall.SIGUSR1, shutdown)
+	// 创建source
 	s := newOrFail(dir)
+	// 启动source
 	ch := startOrFail(s)
+	// 下游接收到的事件
 	receive(ch)
 }
