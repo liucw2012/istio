@@ -518,11 +518,13 @@ func (s *Server) initMCPConfigController(args *PilotArgs) error {
 	clientNodeID := ""
 	collections := make([]sink.CollectionOptions, len(model.IstioConfigTypes))
 	for i, t := range model.IstioConfigTypes {
+		// 都是istio crd资源 没有原生的k8s资源 比如pod, service等
 		collections[i] = sink.CollectionOptions{Name: t.Collection, Incremental: false}
 	}
 
 	options := coredatamodel.Options{
 		DomainSuffix: args.Config.ControllerOptions.DomainSuffix,
+		// 后面会用到
 		ClearDiscoveryServerCache: func() {
 			s.EnvoyXdsServer.ConfigUpdate(&model.PushRequest{Full: true})
 		},
@@ -559,7 +561,7 @@ func (s *Server) initMCPConfigController(args *PilotArgs) error {
 				continue
 			}
 		}
-
+		// 设置安全访问的情况 在以后分析policy的时候会用到
 		securityOption := grpc.WithInsecure()
 		if configSource.TlsSettings != nil &&
 			configSource.TlsSettings.Mode != istio_networking_v1alpha3.TLSSettings_DISABLE {
@@ -633,7 +635,7 @@ func (s *Server) initMCPConfigController(args *PilotArgs) error {
 			cancel()
 			return err
 		}
-
+		// 创建一个controller
 		mcpController := coredatamodel.NewController(options)
 		sinkOptions := &sink.Options{
 			CollectionOptions: collections,
@@ -641,19 +643,20 @@ func (s *Server) initMCPConfigController(args *PilotArgs) error {
 			ID:                clientNodeID,
 			Reporter:          reporter,
 		}
-
+		// 创建mcp client
 		cl := mcpapi.NewResourceSourceClient(conn)
 		mcpClient := sink.NewClient(cl, sinkOptions)
 		configz.Register(mcpClient)
 		clients = append(clients, mcpClient)
 
 		conns = append(conns, conn)
+		// 将该controller加入到configStores
 		configStores = append(configStores, mcpController)
 	}
 
 	s.addStartFunc(func(stop <-chan struct{}) error {
 		var wg sync.WaitGroup
-
+		// 将所有client运行
 		for i := range clients {
 			client := clients[i]
 			wg.Add(1)
@@ -694,6 +697,7 @@ func (s *Server) initMCPConfigController(args *PilotArgs) error {
 // initConfigController creates the config controller in the pilotConfig.
 func (s *Server) initConfigController(args *PilotArgs) error {
 	if len(s.mesh.ConfigSources) > 0 {
+		// 如果有config source的配置 则配置mcp client
 		if err := s.initMCPConfigController(args); err != nil {
 			return err
 		}

@@ -134,6 +134,7 @@ func (c *Controller) Apply(change *sink.Change) error {
 
 	// innerStore is [namespace][name]
 	innerStore := make(map[string]map[string]*model.Config)
+	// 根据change的信息生成以innerStore
 	for _, obj := range change.Objects {
 		namespace, name := extractNameNamespace(obj.Metadata.Name)
 

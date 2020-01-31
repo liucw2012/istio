@@ -58,6 +58,7 @@ func (c *Client) Run(ctx context.Context) {
 
 	for {
 		// connect w/retry
+		// 建立连接
 		for {
 			select {
 			case <-ctx.Done():
@@ -84,7 +85,7 @@ func (c *Client) Run(ctx context.Context) {
 
 			scope.Errorf("Failed to create a new MCP sink stream: %v", err)
 		}
-
+		// 处理
 		err := c.ProcessStream(c.stream)
 		if err != nil && err != io.EOF {
 			c.reporter.RecordRecvError(err, status.Code(err))

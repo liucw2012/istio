@@ -61,6 +61,7 @@ func New(options *Options) *Sink { // nolint: lll
 	}
 
 	state := make(map[string]*perCollectionState)
+	// state来自options.CollectionOptions
 	for _, collection := range options.CollectionOptions {
 		state[collection.Name] = &perCollectionState{
 			versions:           make(map[string]string),
@@ -100,7 +101,7 @@ func (sink *Sink) handleResponse(resources *mcp.Resources) *mcp.RequestResources
 	if handleResponseDoneProbe != nil {
 		defer handleResponseDoneProbe()
 	}
-
+	// 必须是支持的类型
 	state, ok := sink.state[resources.Collection]
 	if !ok {
 		errDetails := status.Errorf(codes.Unimplemented, "unsupported collection %v", resources.Collection)
@@ -131,6 +132,7 @@ func (sink *Sink) handleResponse(resources *mcp.Resources) *mcp.RequestResources
 	}
 
 	if err := sink.updater.Apply(change); err != nil {
+		// 发送NACK
 		errDetails := status.Error(codes.InvalidArgument, err.Error())
 		return sink.sendNACKRequest(resources, errDetails)
 	}
@@ -156,6 +158,7 @@ func (sink *Sink) createInitialRequests() []*mcp.RequestResources {
 	sink.mu.Lock()
 
 	initialRequests := make([]*mcp.RequestResources, 0, len(sink.state))
+	// sink.state 来源自 initMCPConfigController中
 	for collection, state := range sink.state {
 		var initialResourceVersions map[string]string
 
@@ -184,14 +187,16 @@ func (sink *Sink) createInitialRequests() []*mcp.RequestResources {
 // handling gRPC client/server specific error handling.
 func (sink *Sink) ProcessStream(stream Stream) error {
 	// send initial requests for each supported type
+	// 为每一个支持的类型发送一个初始的请求
 	initialRequests := sink.createInitialRequests()
 	for {
 		var req *mcp.RequestResources
-
 		if len(initialRequests) > 0 {
+			// 发送初始request
 			req = initialRequests[0]
 			initialRequests = initialRequests[1:]
 		} else {
+			// 从server端接收response
 			resources, err := stream.Recv()
 			if err != nil {
 				if err != io.EOF {
@@ -200,11 +205,13 @@ func (sink *Sink) ProcessStream(stream Stream) error {
 				}
 				return err
 			}
+			// client端处理后需要发送ACK/NACK
+			// 所以处理response后组装了一个request
 			req = sink.handleResponse(resources)
 		}
 
 		sink.journal.RecordRequestResources(req)
-
+		// 向server端发送request
 		if err := stream.Send(req); err != nil {
 			sink.reporter.RecordSendError(err, status.Code(err))
 			scope.Errorf("Error sending MCP request: %v", err)
