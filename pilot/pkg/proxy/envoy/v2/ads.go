@@ -203,6 +203,7 @@ func newXdsConnection(peerAddr string, stream DiscoveryStream) *XdsConnection {
 func receiveThread(con *XdsConnection, reqChannel chan *xdsapi.DiscoveryRequest, errP *error) {
 	defer close(reqChannel) // indicates close of the remote side.
 	for {
+		// 从client端接收信息
 		req, err := con.stream.Recv()
 		if err != nil {
 			if status.Code(err) == codes.Canceled || err == io.EOF {
@@ -217,6 +218,7 @@ func receiveThread(con *XdsConnection, reqChannel chan *xdsapi.DiscoveryRequest,
 			return
 		}
 		select {
+		// 将req转到reqChannel中
 		case reqChannel <- req:
 		case <-con.stream.Context().Done():
 			adsLog.Errorf("ADS: %q %s terminated with stream closed", con.PeerAddr, con.ConID)
@@ -246,6 +248,7 @@ func (s *DiscoveryServer) StreamAggregatedResources(stream ads.AggregatedDiscove
 		adsLog.Warnf("Error reading config %v", err)
 		return err
 	}
+	// 创建一个XdsConnection
 	con := newXdsConnection(peerAddr, stream)
 
 	// Do not call: defer close(con.pushChannel) !
@@ -260,6 +263,7 @@ func (s *DiscoveryServer) StreamAggregatedResources(stream ads.AggregatedDiscove
 	// This also detects close.
 	var receiveError error
 	reqChannel := make(chan *xdsapi.DiscoveryRequest, 1)
+	// 接收con对应的client的请求
 	go receiveThread(con, reqChannel, &receiveError)
 
 	node := &core.Node{}
@@ -445,6 +449,7 @@ func (s *DiscoveryServer) StreamAggregatedResources(stream ads.AggregatedDiscove
 			if !con.added {
 				con.added = true
 				con.mu.Unlock()
+				// 添加到xdsClient中
 				s.addCon(con.ConID, con)
 				defer s.removeCon(con.ConID, con)
 			} else {
@@ -673,6 +678,7 @@ func (s *DiscoveryServer) startPush(req *model.PushRequest) {
 	adsClientsMutex.RLock()
 	// Create a temp map to avoid locking the add/remove
 	pending := []*XdsConnection{}
+	// 所有的ads client端
 	for _, v := range adsClients {
 		pending = append(pending, v)
 	}
@@ -684,6 +690,7 @@ func (s *DiscoveryServer) startPush(req *model.PushRequest) {
 	}
 	req.Start = time.Now()
 	for _, p := range pending {
+		// 为每一个ads client端都添加了这个req
 		s.pushQueue.Enqueue(p, req)
 	}
 }

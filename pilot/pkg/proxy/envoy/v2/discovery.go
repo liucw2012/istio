@@ -167,10 +167,12 @@ func NewDiscoveryServer(
 
 	// Flush cached discovery responses whenever services, service
 	// instances, or routing configuration changes.
+	// 注册一个serviceHandler
 	serviceHandler := func(*model.Service, model.Event) { out.clearCache() }
 	if err := ctl.AppendServiceHandler(serviceHandler); err != nil {
 		return nil
 	}
+	// 注册一个instanceHandler
 	instanceHandler := func(*model.ServiceInstance, model.Event) { out.clearCache() }
 	if err := ctl.AppendInstanceHandler(instanceHandler); err != nil {
 		return nil
@@ -184,6 +186,7 @@ func NewDiscoveryServer(
 		// (especially mixerclient HTTP and quota)
 		configHandler := func(model.Config, model.Event) { out.clearCache() }
 		for _, descriptor := range model.IstioConfigTypes {
+			// 每一个支持的类型都注册一个handler
 			configCache.RegisterEventHandler(descriptor.Type, configHandler)
 		}
 	}
@@ -274,7 +277,10 @@ func (s *DiscoveryServer) Push(req *model.PushRequest) {
 	// PushContext is reset after a config change. Previous status is
 	// saved.
 	t0 := time.Now()
+	// 创建一个新的PushContext
 	push := model.NewPushContext()
+	// 从当前状态中获得信息(istioConfigStore,ServiceController)
+	// 也就是galley,k8s中获取的内容
 	err := push.InitContext(s.Env)
 	if err != nil {
 		adsLog.Errorf("XDS: Failed to update services: %v", err)
@@ -288,6 +294,7 @@ func (s *DiscoveryServer) Push(req *model.PushRequest) {
 	}
 
 	s.updateMutex.Lock()
+	// 更新PushContext
 	s.Env.PushContext = push
 	s.updateMutex.Unlock()
 
@@ -449,6 +456,7 @@ func doSendPushes(stopCh <-chan struct{}, semaphore chan struct{}, queue *PushQu
 				}
 
 				select {
+				// 组装成一个XdsEvent 往XdsConnection类型中的pushChannel中
 				case client.pushChannel <- &XdsEvent{
 					push:               info.Push,
 					edsUpdatedServices: edsUpdates,

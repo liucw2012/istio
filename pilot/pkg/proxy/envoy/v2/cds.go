@@ -48,11 +48,15 @@ func (conn *XdsConnection) clusters(response []*xdsapi.Cluster) *xdsapi.Discover
 func (s *DiscoveryServer) pushCds(con *XdsConnection, push *model.PushContext, version string) error {
 	// TODO: Modify interface to take services, and config instead of making library query registry
 	pushStart := time.Now()
+	// 发送给该envoy (con.modelNode)
+	// 内容在push中
+	// 根据client信息和内容生成要发送的clusters集合
 	rawClusters := s.generateRawClusters(con.modelNode, push)
 
 	if s.DebugConfigs {
 		con.CDSClusters = rawClusters
 	}
+	// 构造response并发送给该client(envoy)
 	response := con.clusters(rawClusters)
 	err := con.send(response)
 	cdsPushTime.Record(time.Since(pushStart).Seconds())

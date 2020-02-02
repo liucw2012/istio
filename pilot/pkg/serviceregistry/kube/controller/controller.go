@@ -841,8 +841,9 @@ func (c *Controller) AppendServiceHandler(f func(*model.Service, model.Event)) e
 			ports[port.Name] = uint32(port.Port)
 			portsByNum[uint32(port.Port)] = port.Name
 		}
-
+		// 将k8s.Service转化为istio.Service
 		svcConv := kube.ConvertService(*svc, c.domainSuffix, c.ClusterID)
+		// 生成istio.ServiceInstance
 		instances := kube.ExternalNameServiceInstances(*svc, svcConv)
 		switch event {
 		case model.EventDelete:
@@ -852,6 +853,8 @@ func (c *Controller) AppendServiceHandler(f func(*model.Service, model.Event)) e
 			c.Unlock()
 		default:
 			c.Lock()
+		    // fmt.Sprintf("%s.%s.svc.%s", name, namespace, domainSuffix) 为 key
+		    // istio.Service 为 value
 			c.servicesMap[svcConv.Hostname] = svcConv
 			if instances == nil {
 				delete(c.externalNameSvcInstanceMap, svcConv.Hostname)
@@ -861,8 +864,9 @@ func (c *Controller) AppendServiceHandler(f func(*model.Service, model.Event)) e
 			c.Unlock()
 		}
 		// EDS needs the port mapping.
+		// 通过c.XDSUpdater更新
 		c.XDSUpdater.SvcUpdate(c.ClusterID, hostname, ports, portsByNum)
-
+		// 调用
 		f(svcConv, event)
 
 		return nil
@@ -933,6 +937,7 @@ func (c *Controller) updateEDS(ep *v1.Endpoints, event model.Event) {
 
 				// EDS and ServiceEntry use name for service port - ADS will need to
 				// map to numbers.
+				// 组装成istio.endpoint
 				for _, port := range ss.Ports {
 					endpoints = append(endpoints, &model.IstioEndpoint{
 						Address:         ea.IP,

@@ -64,14 +64,14 @@ func NewServiceDiscovery(callbacks model.ConfigStoreCache, store model.IstioConf
 			c.lastChange = time.Now()
 			c.updateNeeded = true
 			c.changeMutex.Unlock()
-
+			// 从config转化成model.Service(istio.Service)
 			services := convertServices(config)
 			for _, handler := range c.serviceHandlers {
 				for _, service := range services {
 					go handler(service, event)
 				}
 			}
-
+			// 从config转化成model.ServiceInstance
 			instances := convertInstances(config)
 			for _, handler := range c.instanceHandlers {
 				for _, instance := range instances {

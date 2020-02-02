@@ -236,19 +236,21 @@ func (a *ADSC) Run() error {
 			return err
 		}
 	}
-
+	// 建立连接
 	xds := ads.NewAggregatedDiscoveryServiceClient(a.conn)
 	edsstr, err := xds.StreamAggregatedResources(context.Background())
 	if err != nil {
 		return err
 	}
 	a.stream = edsstr
+	// 从discovery server接收信息
 	go a.handleRecv()
 	return nil
 }
 
 func (a *ADSC) handleRecv() {
 	for {
+		// 从server端获得信息
 		msg, err := a.stream.Recv()
 		if err != nil {
 			adscLog.Infof("Connection closed for node %v with err: %v", a.nodeID, err)
@@ -262,6 +264,7 @@ func (a *ADSC) handleRecv() {
 		clusters := []*xdsapi.Cluster{}
 		routes := []*xdsapi.RouteConfiguration{}
 		eds := []*xdsapi.ClusterLoadAssignment{}
+		// 为获得的数据分类
 		for _, rsc := range msg.Resources { // Any
 			a.VersionInfo[rsc.TypeUrl] = msg.VersionInfo
 			valBytes := rsc.Value
@@ -286,9 +289,11 @@ func (a *ADSC) handleRecv() {
 
 		// TODO: add hook to inject nacks
 		a.mutex.Lock()
+		// 向server端发送ACK
 		a.ack(msg)
 		a.mutex.Unlock()
 
+		// 客户端处理listener, cluster, endpoint, route
 		if len(listeners) > 0 {
 			a.handleLDS(listeners)
 		}

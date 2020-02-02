@@ -793,8 +793,10 @@ func (s *Server) createK8sServiceControllers(serviceControllers *aggregate.Contr
 	clusterID := string(serviceregistry.KubernetesRegistry)
 	log.Infof("Primary Cluster name: %s", clusterID)
 	args.Config.ControllerOptions.ClusterID = clusterID
+	// 创建一个controller2.Controller
 	kubectl := controller2.NewController(s.kubeClient, args.Config.ControllerOptions)
 	s.kubeRegistry = kubectl
+	// 组装成Registry加入到serviceControllers中
 	serviceControllers.AddRegistry(
 		aggregate.Registry{
 			Name:             serviceregistry.KubernetesRegistry,
@@ -817,6 +819,7 @@ func hasKubeRegistry(args *PilotArgs) bool {
 
 // initServiceControllers creates and initializes the service controllers
 func (s *Server) initServiceControllers(args *PilotArgs) error {
+	// 创建一个aggregate controller
 	serviceControllers := aggregate.NewController()
 	registered := make(map[serviceregistry.ServiceRegistry]bool)
 	for _, r := range args.Service.Registries {
@@ -844,7 +847,7 @@ func (s *Server) initServiceControllers(args *PilotArgs) error {
 			return fmt.Errorf("service registry %s is not supported", r)
 		}
 	}
-
+	// 利用configController创建serviceEntryStore
 	serviceEntryStore := external.NewServiceDiscovery(s.configController, s.istioConfigStore)
 
 	// add service entry registry to aggregator by default
@@ -855,9 +858,11 @@ func (s *Server) initServiceControllers(args *PilotArgs) error {
 	}
 	serviceControllers.AddRegistry(serviceEntryRegistry)
 
+	// serviceControllers是一些aggregate.Registry的集合
 	s.ServiceController = serviceControllers
 
 	// Defer running of the service controllers.
+	// 运行ServiceController
 	s.addStartFunc(func(stop <-chan struct{}) error {
 		go s.ServiceController.Run(stop)
 		return nil
@@ -903,6 +908,7 @@ func (s *Server) initDiscoveryService(args *PilotArgs) error {
 	}
 
 	// Set up discovery service
+	// 构造一个DiscoveryService 主要是提供给一些api供用户查看
 	discovery, err := envoy.NewDiscoveryService(
 		environment,
 		args.DiscoveryOptions,
@@ -911,7 +917,7 @@ func (s *Server) initDiscoveryService(args *PilotArgs) error {
 		return fmt.Errorf("failed to create discovery service: %v", err)
 	}
 	s.mux = discovery.RestContainer.ServeMux
-
+	// 创建DiscoveryServer并赋值给s.EnvoyXdsServer
 	s.EnvoyXdsServer = envoyv2.NewDiscoveryServer(environment,
 		istio_networking.NewConfigGenerator(args.Plugins),
 		s.ServiceController, s.kubeRegistry, s.configController)
@@ -925,6 +931,7 @@ func (s *Server) initDiscoveryService(args *PilotArgs) error {
 	}
 
 	// Implement EnvoyXdsServer grace shutdown
+	// 启动DiscoveryServer
 	s.addStartFunc(func(stop <-chan struct{}) error {
 		s.EnvoyXdsServer.Start(stop)
 		return nil
