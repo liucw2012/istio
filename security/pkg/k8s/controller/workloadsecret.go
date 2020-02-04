@@ -205,6 +205,7 @@ func NewSecretController(ca certificateAuthority, enableNamespacesByDefault bool
 	}
 
 	for _, ns := range namespaces {
+		fmt.Printf("=======>add ns:%v\n", ns)
 		c.namespaces[ns] = struct{}{}
 	}
 

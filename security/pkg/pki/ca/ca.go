@@ -95,6 +95,7 @@ func NewSelfSignedIstioCAOptions(ctx context.Context,
 	// For the first time the CA is up, if readSigningCertOnly is unset,
 	// it generates a self-signed key/cert pair and write it to CASecret.
 	// For subsequent restart, CA will reads key/cert from CASecret.
+	// 查看istio-system这个namespaces中是否存在istio-ca-secret这个secret
 	caSecret, scrtErr := client.Secrets(namespace).Get(CASecret, metav1.GetOptions{})
 	if scrtErr != nil && readCertRetryInterval > time.Duration(0) {
 		log.Infof("Citadel in signing key/cert read only mode. Wait until secret %s:%s can be loaded...", namespace, CASecret)
@@ -141,21 +142,24 @@ func NewSelfSignedIstioCAOptions(ctx context.Context,
 			RSAKeySize:   caKeySize,
 			IsDualUse:    dualUse,
 		}
+		// 用x509生成key和证书cert
 		pemCert, pemKey, ckErr := util.GenCertKeyFromOptions(options)
 		if ckErr != nil {
 			return nil, fmt.Errorf("unable to generate CA cert and key for self-signed CA (%v)", ckErr)
 		}
-
+		// 把证书cert添加到rootCerts
 		rootCerts, err := util.AppendRootCerts(pemCert, rootCertFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to append root certificates (%v)", err)
 		}
-
+		// 利用pemCert, pemKey, rootCerts 填充caOpts.KeyCertBundle
 		if caOpts.KeyCertBundle, err = util.NewVerifiedKeyCertBundleFromPem(pemCert, pemKey, nil, rootCerts); err != nil {
 			return nil, fmt.Errorf("failed to create CA KeyCertBundle (%v)", err)
 		}
 
 		// Write the key/cert back to secret so they will be persistent when CA restarts.
+		// 在istio-system namespace中生成一个类型为istio.io/ca-root的secret
+		// secret里面的数据是 根证书和根key
 		secret := k8ssecret.BuildSecret("", CASecret, namespace, nil, nil, nil, pemCert, pemKey, istioCASecretType)
 		if _, err = client.Secrets(namespace).Create(secret); err != nil {
 			log.Errorf("Failed to write secret to CA (error: %s). Abort.", err)
@@ -163,6 +167,7 @@ func NewSelfSignedIstioCAOptions(ctx context.Context,
 		}
 		log.Infof("Using self-generated public key: %v", string(rootCerts))
 	} else {
+		// 从已有的secret中读取
 		log.Infof("Load signing key and cert from existing secret %s:%s", caSecret.Namespace, caSecret.Name)
 		rootCerts, err := util.AppendRootCerts(caSecret.Data[caCertID], rootCertFile)
 		if err != nil {
@@ -174,7 +179,7 @@ func NewSelfSignedIstioCAOptions(ctx context.Context,
 		}
 		log.Infof("Using existing public key: %v", string(rootCerts))
 	}
-
+	// 将根证书保存到configmap中 名字为istio-system/istio-security
 	if err = updateCertInConfigmap(namespace, client, caOpts.KeyCertBundle.GetRootCertPem()); err != nil {
 		log.Errorf("Failed to write Citadel cert to configmap (%v). Node agents will not be able to connect.", err)
 	} else {
@@ -265,11 +270,12 @@ func (ca *IstioCA) Run(stopChan chan struct{}) {
 // the signed certificate is a CA certificate, otherwise, it is a workload certificate.
 // TODO(myidpt): Add error code to identify the Sign error types.
 func (ca *IstioCA) Sign(csrPEM []byte, subjectIDs []string, requestedLifetime time.Duration, forCA bool) ([]byte, error) {
+	// 用于签名的证书和key 就是在NewSelfSignedIstioCAOptions中生成的key和cert
 	signingCert, signingKey, _, _ := ca.keyCertBundle.GetAll()
 	if signingCert == nil {
 		return nil, caerror.NewError(caerror.CANotReady, fmt.Errorf("Istio CA is not ready")) // nolint
 	}
-
+	// 生成csr
 	csr, err := util.ParsePemEncodedCSR(csrPEM)
 	if err != nil {
 		return nil, caerror.NewError(caerror.CSRError, err)
@@ -285,7 +291,7 @@ func (ca *IstioCA) Sign(csrPEM []byte, subjectIDs []string, requestedLifetime ti
 		return nil, caerror.NewError(caerror.TTLError, fmt.Errorf(
 			"requested TTL %s is greater than the max allowed TTL %s", requestedLifetime, ca.maxCertTTL))
 	}
-
+	// 生成签名证书
 	certBytes, err := util.GenCertFromCSR(csr, signingCert, csr.PublicKey, *signingKey, subjectIDs, lifetime, forCA)
 	if err != nil {
 		return nil, caerror.NewError(caerror.CertGenError, err)
