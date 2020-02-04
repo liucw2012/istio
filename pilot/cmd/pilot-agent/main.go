@@ -183,7 +183,7 @@ var (
 				tlsServerCertChain, tlsServerKey, tlsServerRootCert,
 				tlsClientCertChain, tlsClientKey, tlsClientRootCert,
 			}
-
+			// envoy的配置信息
 			proxyConfig := mesh.DefaultProxyConfig()
 
 			// set all flags

@@ -62,6 +62,8 @@ type Agent interface {
 	// Agent compares the current active configuration to the desired state and
 	// initiates a restart if necessary. If the restart fails, the agent attempts
 	// to retry with an exponential back-off.
+	// 返回一个config channel用于发送文件更新
+	// agent会与当前config比较来决定是否需要重启envoy, 如果启动失败会以exponential back-off形式重试
 	ConfigCh() chan<- interface{}
 
 	// Run starts the agent control loop and awaits for a signal on the input
@@ -88,11 +90,14 @@ const (
 // NewAgent creates a new proxy agent for the proxy start-up and clean-up functions.
 func NewAgent(proxy Proxy, retry Retry, terminationDrainDuration time.Duration) Agent {
 	return &agent{
+		// 要运行的proxy
 		proxy:                    proxy,
 		retry:                    retry,
+		// 每个版本对应的config
 		epochs:                   make(map[int]interface{}),
 		configCh:                 make(chan interface{}),
 		statusCh:                 make(chan exitStatus),
+		// 每个版本对应的退出channel
 		abortCh:                  make(map[int]chan error),
 		terminationDrainDuration: terminationDrainDuration,
 	}
@@ -117,13 +122,16 @@ type Retry struct {
 // Proxy defines command interface for a proxy
 type Proxy interface {
 	// Run command for a config, epoch, and abort channel
+	// 运行 传入config, epoch, abort channel
 	Run(interface{}, int, <-chan error) error
 
 	// Cleanup command for an epoch
+	// 清理某个epoch的信息
 	Cleanup(int)
 
 	// Panic command is invoked with the desired config when all retries to
 	// start the proxy fail just before the agent terminating
+	// 重试了所有的次数后还无法成功 panic该epoch
 	Panic(interface{})
 }
 
@@ -194,19 +202,23 @@ func (a *agent) Run(ctx context.Context) {
 		reconcileTimer = time.NewTimer(delay)
 
 		select {
+		// 有文件更新
 		case config := <-a.configCh:
 			if !reflect.DeepEqual(a.desiredConfig, config) {
+				// 如果有新文件
 				log.Infof("Received new config, resetting budget")
+				// 更新a.desiredConfig
 				a.desiredConfig = config
 
 				// reset retry budget if and only if the desired config changes
 				a.retry.budget = a.retry.MaxRetries
 				a.reconcile()
 			}
-
+		// envoy proxy运行结束
 		case status := <-a.statusCh:
 			// delete epoch record and update current config
 			// avoid self-aborting on non-abort error
+			// 删除该版本内存中内容
 			delete(a.epochs, status.epoch)
 			delete(a.abortCh, status.epoch)
 			a.currentConfig = a.epochs[a.latestEpoch()]
@@ -225,6 +237,7 @@ func (a *agent) Run(ctx context.Context) {
 			}
 
 			// cleanup for the epoch
+			// 为当前版本做清理工作 因为该版本的envoy proxy已经运行结束
 			a.proxy.Cleanup(status.epoch)
 
 			// schedule a retry for an error.
@@ -242,6 +255,7 @@ func (a *agent) Run(ctx context.Context) {
 						log.Infof("Epoch %d: set retry delay to %v, budget to %d", status.epoch, delayDuration, a.retry.budget)
 					} else {
 						log.Error("Permanent error: budget exhausted trying to fulfill the desired configuration")
+						// 已经试过所有的次数 panic该版本并且agent整体退出
 						a.proxy.Panic(status.epoch)
 						return
 					}
@@ -249,10 +263,10 @@ func (a *agent) Run(ctx context.Context) {
 					log.Debugf("Epoch %d: restart already scheduled", status.epoch)
 				}
 			}
-
+		// 定时操作
 		case <-reconcileTimer.C:
 			a.reconcile()
-
+		// 结束agent
 		case <-ctx.Done():
 			a.terminate()
 			log.Info("Agent has successfully terminated")
@@ -278,17 +292,21 @@ func (a *agent) reconcile() {
 	log.Infof("Reconciling retry (budget %d)", a.retry.budget)
 
 	// check that the config is current
+	// 与当前config比较
 	if reflect.DeepEqual(a.desiredConfig, a.currentConfig) {
 		log.Infof("Desired configuration is already applied")
 		return
 	}
 
 	// discover and increment the latest running epoch
+	// 增加一个版本号
 	epoch := a.latestEpoch() + 1
 	// buffer aborts to prevent blocking on failing proxy
 	abortCh := make(chan error, maxAborts)
+	// 当前版本对应的config和abort channel
 	a.epochs[epoch] = a.desiredConfig
 	a.abortCh[epoch] = abortCh
+	// 更新当前agent的config
 	a.currentConfig = a.desiredConfig
 	go a.runWait(a.desiredConfig, epoch, abortCh)
 }
@@ -296,7 +314,9 @@ func (a *agent) reconcile() {
 // runWait runs the start-up command as a go routine and waits for it to finish
 func (a *agent) runWait(config interface{}, epoch int, abortCh <-chan error) {
 	log.Infof("Epoch %d starting", epoch)
+	// 同步运行proxy 返回结果为err
 	err := a.proxy.Run(config, epoch, abortCh)
+	// envoy proxy 运行完将结果组装成一个exitStatus 发送到 a.statusCh
 	a.statusCh <- exitStatus{epoch: epoch, err: err}
 }
 

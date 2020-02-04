@@ -67,6 +67,7 @@ func (w *watcher) Run(ctx context.Context) {
 
 func (w *watcher) SendConfig() {
 	h := sha256.New()
+	// 向agent.configCh发送信息
 	generateCertHash(h, w.certs)
 	w.updates <- h.Sum(nil)
 }

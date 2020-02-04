@@ -121,6 +121,7 @@ func (e *envoy) Run(config interface{}, epoch int, abort <-chan error) error {
 	} else if _, ok := config.(proxy.DrainConfig); ok {
 		fname = drainFile
 	} else {
+		// 生成envoy的配置文件
 		out, err := bootstrap.WriteBootstrap(
 			&e.config, e.node, epoch, e.pilotSAN, e.opts, os.Environ(), e.nodeIPs, e.dnsRefreshRate)
 		if err != nil {
@@ -132,10 +133,12 @@ func (e *envoy) Run(config interface{}, epoch int, abort <-chan error) error {
 	}
 
 	// spin up a new Envoy process
+	// 构造envoy运行的配置文件
 	args := e.args(fname, epoch, istioBootstrapOverrideVar.Get())
 	log.Infof("Envoy command: %v", args)
 
 	/* #nosec */
+	// 运行
 	cmd := exec.Command(e.config.BinaryPath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -144,6 +147,7 @@ func (e *envoy) Run(config interface{}, epoch int, abort <-chan error) error {
 	}
 	done := make(chan error, 1)
 	go func() {
+		// 等待运行结果
 		done <- cmd.Wait()
 	}()
 
@@ -161,6 +165,7 @@ func (e *envoy) Run(config interface{}, epoch int, abort <-chan error) error {
 
 func (e *envoy) Cleanup(epoch int) {
 	filePath := configFile(e.config.ConfigPath, epoch)
+	// 删除此版本的配置文件
 	if err := os.Remove(filePath); err != nil {
 		log.Warnf("Failed to delete config file %s for %d, %v", filePath, epoch, err)
 	}
@@ -170,6 +175,7 @@ func (e *envoy) Panic(epoch interface{}) {
 	log.Error("cannot start the e with the desired configuration")
 	if epochInt, ok := epoch.(int); ok {
 		// print the failed config file
+		// 打印所有失败的配置文件
 		filePath := configFile(e.config.ConfigPath, epochInt)
 		b, _ := ioutil.ReadFile(filePath)
 		log.Errorf(string(b))
