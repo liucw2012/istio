@@ -99,11 +99,13 @@ func (authn *K8sSvcAcctAuthn) reviewServiceAccountAtK8sAPIServer(targetToken str
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal the service account review request: %v", err)
 	}
+	// 构造request
 	req, err := http.NewRequest("POST", authn.apiServerAddr, bytes.NewBuffer(saReqJSON))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a HTTP request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	// authn.callerToken是security这个pod的token
 	req.Header.Set("Authorization", "Bearer "+authn.callerToken)
 	resp, err := authn.httpClient.Do(req)
 	if err != nil {
@@ -117,6 +119,7 @@ func (authn *K8sSvcAcctAuthn) reviewServiceAccountAtK8sAPIServer(targetToken str
 // Otherwise, return the error.
 // targetToken: the JWT of the K8s service account to be reviewed
 func (authn *K8sSvcAcctAuthn) ValidateK8sJwt(targetToken string) ([]string, error) {
+	// 判断是否TrustworthyJwt
 	// SDS requires JWT to be trustworthy (has aud, exp, and mounted to the pod).
 	isTrustworthyJwt, err := isTrustworthyJwt(targetToken)
 	if err != nil {
@@ -125,7 +128,7 @@ func (authn *K8sSvcAcctAuthn) ValidateK8sJwt(targetToken string) ([]string, erro
 	if !isTrustworthyJwt {
 		return nil, fmt.Errorf("legacy JWTs are not allowed and the provided jwt is not trustworthy")
 	}
-
+	// 返回结果
 	resp, err := authn.reviewServiceAccountAtK8sAPIServer(targetToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get a token review response: %v", err)

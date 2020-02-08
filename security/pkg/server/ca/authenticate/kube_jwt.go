@@ -30,11 +30,13 @@ const (
 )
 
 type tokenReviewClient interface {
+	// 输入一个Bearer token, 返回{namespace, serviceaccount name}
 	ValidateK8sJwt(targetJWT string) ([]string, error)
 }
 
 // KubeJWTAuthenticator authenticates K8s JWTs.
 type KubeJWTAuthenticator struct {
+	// 一个tokenReviewClient实现体
 	client      tokenReviewClient
 	trustDomain string
 }
@@ -57,16 +59,19 @@ func NewKubeJWTAuthenticator(k8sAPIServerURL, caCertPath, jwtPath, trustDomain s
 }
 
 func (a *KubeJWTAuthenticator) AuthenticatorType() string {
+	// KubeJWTAuthenticatorType = "KubeJWTAuthenticator"
 	return KubeJWTAuthenticatorType
 }
 
 // Authenticate authenticates the call using the K8s JWT from the context.
 // The returned Caller.Identities is in SPIFFE format.
 func (a *KubeJWTAuthenticator) Authenticate(ctx context.Context) (*Caller, error) {
+	// 从header Bearer里面获得token
 	targetJWT, err := extractBearerToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("target JWT extraction error: %v", err)
 	}
+	// 认证客户端并且得到客户端的信息
 	id, err := a.client.ValidateK8sJwt(targetJWT)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate the JWT: %v", err)
@@ -76,8 +81,10 @@ func (a *KubeJWTAuthenticator) Authenticate(ctx context.Context) (*Caller, error
 	}
 	callerNamespace := id[0]
 	callerServiceAccount := id[1]
+	// 返回一个Caller
 	return &Caller{
 		AuthSource: AuthSourceIDToken,
+		// identityTemplate         = "spiffe://%s/ns/%s/sa/%s"
 		Identities: []string{fmt.Sprintf(identityTemplate, a.trustDomain, callerNamespace, callerServiceAccount)},
 	}, nil
 }

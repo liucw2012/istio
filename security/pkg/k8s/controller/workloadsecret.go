@@ -205,7 +205,6 @@ func NewSecretController(ca certificateAuthority, enableNamespacesByDefault bool
 	}
 
 	for _, ns := range namespaces {
-		fmt.Printf("=======>add ns:%v\n", ns)
 		c.namespaces[ns] = struct{}{}
 	}
 
@@ -315,27 +314,30 @@ func (sc *SecretController) saDeleted(obj interface{}) {
 }
 
 func (sc *SecretController) upsertSecret(saName, saNamespace string) {
+	// 根据serviceaccount name和namespace 构造一个istio.io/key-and-cert类型的secret
 	secret := k8ssecret.BuildSecret(saName, GetSecretName(saName), saNamespace, nil,
 		nil, nil, nil, nil, IstioSecretType)
-
+	// 查看该secret是否已经存在于k8s中
 	_, exists, err := sc.scrtStore.Get(secret)
 	if err != nil {
 		k8sControllerLog.Errorf("Failed to get secret %s/%s from the store (error %v)",
 			saNamespace, GetSecretName(saName), err)
 	}
-
+	// 如果已经存在 直接返回
 	if exists {
 		// Do nothing for existing secrets. Rotating expiring certs are handled by the `scrtUpdated` method.
 		return
 	}
 
 	// Now we know the secret does not exist yet. So we create a new one.
+	// k8s中不存在 则生成自己的key和证书 签名是用根证书签的
 	chain, key, err := sc.generateKeyAndCert(saName, saNamespace)
 	if err != nil {
 		k8sControllerLog.Errorf("Failed to generate key/cert for %s/%s (error %v)",
 			saNamespace, GetSecretName(saName), err)
 		return
 	}
+	// 根证书
 	rootCert := sc.ca.GetCAKeyCertBundle().GetRootCertPem()
 	secret.Data = map[string][]byte{
 		CertChainID:  chain,
@@ -345,6 +347,7 @@ func (sc *SecretController) upsertSecret(saName, saNamespace string) {
 
 	// We retry several times when create secret to mitigate transient network failures.
 	for i := 0; i < secretCreationRetry; i++ {
+		// 保存到k8s中
 		_, err = sc.core.Secrets(saNamespace).Create(secret)
 		if err == nil {
 			k8sControllerLog.Infof("Secret %s/%s is created successfully", saNamespace, GetSecretName(saName))
@@ -437,7 +440,7 @@ func (sc *SecretController) enableNamespaceRetroactive(namespace string) {
 		k8sControllerLog.Errorf("could not retrieve service account resources from namespace %s", namespace)
 		return
 	}
-
+	// 遍历该namespace下所有的serviceaccount 调用upsertSecret方法
 	for _, sa := range serviceAccounts.Items {
 		sc.upsertSecret(sa.GetName(), sa.GetNamespace()) // idempotent, since does not gen duplicate secrets
 	}
@@ -445,7 +448,9 @@ func (sc *SecretController) enableNamespaceRetroactive(namespace string) {
 }
 
 func (sc *SecretController) generateKeyAndCert(saName string, saNamespace string) ([]byte, []byte, error) {
+	// 生成可以识别的名字
 	id := spiffe.MustGenSpiffeURI(saNamespace, saName)
+	// 如果有自定义域名 则加入到id中
 	if sc.dnsNames != nil {
 		// Control plane components in same namespace.
 		if e, ok := sc.dnsNames[saName]; ok {
@@ -469,7 +474,7 @@ func (sc *SecretController) generateKeyAndCert(saName string, saNamespace string
 		IsDualUse:  sc.dualUse,
 		PKCS8Key:   sc.pkcs8Key,
 	}
-
+	// 生成key 和csr
 	csrPEM, keyPEM, err := util.GenCSR(options)
 	if err != nil {
 		k8sControllerLog.Errorf("CSR generation error (%v)", err)
@@ -478,6 +483,7 @@ func (sc *SecretController) generateKeyAndCert(saName string, saNamespace string
 	}
 
 	certChainPEM := sc.ca.GetCAKeyCertBundle().GetCertChainPem()
+	// 获得签名后的证书
 	certPEM, signErr := sc.ca.Sign(csrPEM, strings.Split(id, ","), sc.certTTL, sc.forCA)
 	if signErr != nil {
 		k8sControllerLog.Errorf("CSR signing error (%v)", signErr.Error())

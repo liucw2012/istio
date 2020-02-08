@@ -204,7 +204,7 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 	var receiveError error
 	reqChannel := make(chan *xdsapi.DiscoveryRequest, 1)
 	con := newSDSConnection(stream)
-
+	// 从客户端接收信息
 	go receiveThread(con, reqChannel, &receiveError)
 
 	var node *core.Node
@@ -245,6 +245,7 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 				// first request
 				con.conID = constructConnectionID(discReq.Node.Id)
 				key.ConnectionID = con.conID
+				// 添加到sdsclient
 				addConn(key, con)
 				firstRequestFlag = true
 			}
@@ -296,11 +297,14 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 			// In ingress gateway agent mode, if the first SDS request is received but kubernetes secret is not ready,
 			// wait for secret before sending SDS response. If a kubernetes secret was deleted by operator, wait
 			// for a new kubernetes secret before sending SDS response.
+
+			// 在ingress gateway agent模式, 如果第一个sds请求已经收到但是k8s中还没有对应的secret, 在发送response之前先等待一下这个secret
 			if s.st.ShouldWaitForIngressGatewaySecret(conID, resourceName, token) {
 				sdsServiceLog.Warnf("%s waiting for ingress gateway secret for proxy %q\n", conIDresourceNamePrefix, discReq.Node.Id)
 				continue
 			}
-
+			// 获取secret 如果是ingress gateway agent模式, 那该secret是从k8s中获得
+			// 如果不是 则自己生成并请求签名
 			secret, err := s.st.GenerateSecret(ctx, conID, resourceName, token)
 			if err != nil {
 				sdsServiceLog.Errorf("%s Close connection. Failed to get secret for proxy %q from "+
@@ -315,13 +319,14 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 			con.mutex.Lock()
 			con.secret = secret
 			con.mutex.Unlock()
-
+			// 向客户端发送response
 			if err := pushSDS(con); err != nil {
 				sdsServiceLog.Errorf("%s Close connection. Failed to push key/cert to proxy %q: %v",
 					conIDresourceNamePrefix, discReq.Node.Id, err)
 				return err
 			}
 		case <-con.pushChannel:
+			// server端主动向client端push的信号
 			con.mutex.RLock()
 			proxyID := con.proxyID
 			conID := con.conID
@@ -344,7 +349,7 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 				sdsServiceLog.Debugf("%s close connection for proxy %q", conIDresourceNamePrefix, proxyID)
 				return fmt.Errorf("%s Close connection to proxy %q", conIDresourceNamePrefix, conID)
 			}
-
+			// 向客户端发送response
 			if err := pushSDS(con); err != nil {
 				sdsServiceLog.Errorf("%s Close connection. Failed to push key/cert to proxy %q: %v",
 					conIDresourceNamePrefix, proxyID, err)
@@ -530,13 +535,13 @@ func pushSDS(con *sdsConnection) error {
 	if secret == nil {
 		return fmt.Errorf("sdsConnection %v passed into pushSDS() contains nil secret", con)
 	}
-
+	// 构造response
 	response, err := sdsDiscoveryResponse(secret, conID, resourceName)
 	if err != nil {
 		sdsServiceLog.Errorf("%s failed to construct response for SDS push: %v", conIDresourceNamePrefix, err)
 		return err
 	}
-
+	// 向客户端发送response
 	if err = con.stream.Send(response); err != nil {
 		sdsServiceLog.Errorf("%s failed to send response: %v", conIDresourceNamePrefix, err)
 		totalPushErrorCounts.Increment()

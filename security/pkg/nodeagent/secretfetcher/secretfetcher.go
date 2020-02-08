@@ -123,6 +123,7 @@ func NewSecretFetcher(ingressGatewayAgent bool, endpoint, caProviderName string,
 	ret := &SecretFetcher{}
 
 	if ingressGatewayAgent {
+		// 如果是ingress gateway模式, 则监控k8s中的secret并从中获取信息
 		ret.UseCaClient = false
 		cs, err := kube.CreateClientset("", "")
 		if err != nil {
@@ -132,6 +133,7 @@ func NewSecretFetcher(ingressGatewayAgent bool, endpoint, caProviderName string,
 		secretFetcherLog.Debugf("SecretFetcher set fallback secret name %s", ret.FallbackSecretName)
 		ret.InitWithKubeClient(cs.CoreV1())
 	} else {
+		// 如果是workload agent模式, 则创建ca client 从citadel中获得签名证书等
 		caClient, err := ca.NewCAClient(endpoint, caProviderName, tlsFlag, tlsRootCert,
 			vaultAddr, vaultRole, vaultAuthPath, vaultSignCsrPath)
 		if err != nil {

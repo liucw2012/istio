@@ -46,7 +46,9 @@ const (
 )
 
 type authenticator interface {
+	// 认证此client端用户并且返回client端的用户信息
 	Authenticate(ctx context.Context) (*authenticate.Caller, error)
+	// 返回认证类型
 	AuthenticatorType() string
 }
 
@@ -135,13 +137,14 @@ func extractRootCertExpiryTimestamp(ca CertificateAuthority) float64 {
 // [TODO](myidpt): Deprecate this function.
 func (s *Server) HandleCSR(ctx context.Context, request *pb.CsrRequest) (*pb.CsrResponse, error) {
 	s.monitoring.CSR.Inc()
+	// 认证
 	caller := s.authenticate(ctx)
 	if caller == nil || len(caller.Identities) == 0 {
 		log.Warn("request authentication failure, no caller identity")
 		s.monitoring.AuthnError.Inc()
 		return nil, status.Error(codes.Unauthenticated, "request authenticate failure, no caller identity")
 	}
-
+	// 生成csr
 	csr, err := util.ParsePemEncodedCSR(request.CsrPem)
 	if err != nil {
 		log.Warnf("CSR Pem parsing error (error %v)", err)
@@ -157,7 +160,7 @@ func (s *Server) HandleCSR(ctx context.Context, request *pb.CsrRequest) (*pb.Csr
 	}
 
 	// TODO: Call authorizer.
-
+	// 获得签名后的证书
 	_, _, certChainBytes, _ := s.ca.GetCAKeyCertBundle().GetAll()
 	cert, signErr := s.ca.Sign(
 		request.CsrPem, caller.Identities, time.Duration(request.RequestedTtlMinutes)*time.Minute, s.forCA)
@@ -166,7 +169,7 @@ func (s *Server) HandleCSR(ctx context.Context, request *pb.CsrRequest) (*pb.Csr
 		s.monitoring.GetCertSignError(signErr.(*caerror.Error).ErrorType()).Inc()
 		return nil, status.Errorf(codes.Internal, "CSR signing error (%v)", signErr.(*caerror.Error))
 	}
-
+	// 组装response
 	response := &pb.CsrResponse{
 		IsApproved: true,
 		SignedCert: cert,
@@ -223,6 +226,7 @@ func New(ca CertificateAuthority, ttl time.Duration, forCA bool,
 
 	// Only add k8s jwt authenticator if SDS is enabled.
 	if sdsEnabled {
+		// 添加一个k8s jwt认证
 		authenticator, err := authenticate.NewKubeJWTAuthenticator(k8sAPIServerURL, caCertPath, jwtPath,
 			trustDomain)
 		if err == nil {

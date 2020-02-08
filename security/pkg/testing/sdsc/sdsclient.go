@@ -58,6 +58,7 @@ func constructSDSRequestContext() (context.Context, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the token file %v", err)
 	}
+	// 注意是/var/run/secrets/tokens/istio-token里的内容
 	md := metadata.New(map[string]string{
 		authn_model.K8sSAJwtTokenHeaderKey: string(content),
 	})

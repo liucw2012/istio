@@ -334,20 +334,23 @@ func runCA() {
 
 	var webhooks map[string]*controller.DNSNameEntry
 	if opts.appendDNSNames {
+		// 生成自定义的dnsname
 		webhooks = controller.ConstructCustomDNSNames(webhookServiceAccounts,
 			webhookServiceNames, opts.istioCaStorageNamespace, opts.customDNSNames)
 	}
-
+	// 创建k8s client
 	cs, err := kubelib.CreateClientset(opts.kubeConfigFile, "")
 	if err != nil {
 		fatalf("Could not create k8s clientset: %v", err)
 	}
+	// 创建IstioCA
 	ca := createCA(cs.CoreV1())
 
 	stopCh := make(chan struct{})
 	if !opts.serverOnly {
 		log.Infof("Creating Kubernetes controller to write issued keys and certs into secret ...")
 		// For workloads in K8s, we apply the configured workload cert TTL.
+		// 创建SecretController
 		sc, err := controller.NewSecretController(ca, opts.enableNamespacesByDefault,
 			opts.workloadCertTTL, opts.workloadCertGracePeriodRatio, opts.workloadCertMinGracePeriod,
 			opts.dualUse, cs.CoreV1(), opts.signCACerts, opts.pkcs8Keys, listenedNamespaces, webhooks,
@@ -355,6 +358,7 @@ func runCA() {
 		if err != nil {
 			fatalf("Failed to create secret controller: %v", err)
 		}
+		// 运行SecretController
 		sc.Run(stopCh)
 	} else {
 		log.Info("Citadel is running in server only mode, certificates will not be propagated via secret.")

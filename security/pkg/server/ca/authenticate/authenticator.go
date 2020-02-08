@@ -46,7 +46,9 @@ const (
 
 // Caller carries the identity and authentication source of a caller.
 type Caller struct {
+	// 认证的类型
 	AuthSource AuthSource
+	// client的
 	Identities []string
 }
 
@@ -76,7 +78,7 @@ func (cca *ClientCertAuthenticator) Authenticate(ctx context.Context) (*Caller, 
 	if len(chains) == 0 || len(chains[0]) == 0 {
 		return nil, fmt.Errorf("no verified chain is found")
 	}
-
+	// 从extensions中获得ids
 	ids, err := util.ExtractIDs(chains[0][0].Extensions)
 	if err != nil {
 		return nil, err
